@@ -12,8 +12,103 @@ struct Record
 	int _peopleCount = 0;
 };
 
+std::vector<Record*> ReadForeignFile(const std::string& filename)
+{
+	std::vector<Record*> records;
+	std::ifstream fin;
 
-std::vector<Record*> ReadFile(const std::string& filename)
+	fin.open(filename);
+
+	if (!fin.is_open())
+	{
+		std::cout << "Файл не удалось открыть.\n";
+		system("pause");
+	}
+	else
+	{
+		char sym;
+		std::string word;
+		int count = 0;										//> счётчик ";"
+		bool isFirstLine = true;							//> переменная для организации пропуска первой строки
+		
+		Record* rec = new Record;
+		while (fin.get(sym))
+		{
+			if (isFirstLine)
+				while (fin.get(sym).get() != '\n');
+			isFirstLine = false;
+			if (sym == '"')
+			{
+				while (fin.get(sym).get() != '"');
+			}
+			if (count == 6 && sym != '\n')
+				continue;
+			else if (count == 6 && sym == '\n')				//> переход на новую стрку в файле
+			{
+				count = 0;				
+				continue;
+			}
+			if (sym == ';')
+			{
+				count++;
+				if (count == 4)
+				{
+					if (word == "Female")
+						rec->_sex = 0;
+					else if (word == "Male")
+						rec->_sex = 1;
+					word = "";
+				}
+				else if(count == 6)
+				{
+					rec->_peopleCount = std::stoi(word);
+					std::cout << rec->_name << " " << rec->_sex << " " << rec->_peopleCount << std::endl;
+					records.push_back(rec);
+					rec = new Record;
+				}
+				continue;
+
+			}
+			else if (count == 1)
+			{
+				if (sym != ';')
+				{
+					rec->_name += sym;
+					continue;
+				}
+			}
+			else if (count == 3)
+			{
+				if (sym != ';')
+				{
+					word += sym;
+					continue;
+				}
+			}
+			else if (count == 5)
+			{
+				if (sym != ';')
+				{
+					if (sym >= '0' && sym <= '9')
+						word += sym;
+
+					continue;
+				}
+
+				continue;
+			}
+
+		}
+		if (records.back() != nullptr && records.back() != rec) //> защита от утечки памяти. Если последняя строчка не будет записана в вектор records
+			delete rec;
+	}
+	
+
+	fin.close();
+	return std::move(records);
+}
+
+std::vector<Record*> ReadRusFile(const std::string& filename)
 {
 	std::vector<Record*> records;
 	std::ifstream fin;
@@ -84,8 +179,8 @@ std::vector<Record*> ReadFile(const std::string& filename)
 
 		char sym;
 		std::string word;
-		int count = 0;						//< счётчик ";"
-		bool isFirstLine = true;
+		int count = 0;										//> счётчик ";"
+		bool isFirstLine = true;							//> переменная для организации пропуска первой строки
 		Record* rec = new Record;
 		while (fin.get(sym))
 		{
@@ -94,7 +189,7 @@ std::vector<Record*> ReadFile(const std::string& filename)
 			isFirstLine = false;
 			if (count == 4 && sym != '\n')
 				continue;
-			else if (count == 4 && sym == '\n')
+			else if (count == 4 && sym == '\n')				//> переход на новую стрку в файле
 			{
 				rec->_peopleCount = std::stoi(word);
 				records.push_back(rec);
@@ -143,7 +238,7 @@ std::vector<Record*> ReadFile(const std::string& filename)
 			}
 
 		}
-		if (records.back() != nullptr && records.back() != rec) // защита от утечки памяти. Если последняя строчка не будет записана в вектор records
+		if (records.back() != nullptr && records.back() != rec) //> защита от утечки памяти. Если последняя строчка не будет записана в вектор records
 			delete rec;
 	}
 
@@ -152,6 +247,11 @@ std::vector<Record*> ReadFile(const std::string& filename)
 	return std::move(records);
 }
 
+/*!
+функция подсчитывающая количество людей в векторе records
+\param[in] records вектор содержащий указатели на структуры Record
+\param[out] количество людей в records
+*/
 int NumbersOfPeople(const std::vector<Record*>& records)
 {
 	int result = 0;
@@ -162,6 +262,11 @@ int NumbersOfPeople(const std::vector<Record*>& records)
 	return result;
 }
 
+/*!
+функция возвращающая запись с максимальным количеством носителей имён
+\param[in] records вектор содержащий указатели на структуры Record
+\param[out] структуру Record
+*/
 Record MaxNumberName(const std::vector<Record*>& records)
 {
 	int max = 0;
@@ -203,6 +308,7 @@ void DeleteNamesWithZeroNameBearers(std::vector<Record*>& records)					// уда
 	{
 		if (records.at(i)->_peopleCount == 0)
 		{
+			delete records.at(i);
 			records.erase(records.begin() + i);
 		}
 		else
@@ -227,17 +333,26 @@ size_t NumberOfNamesWithZeroNameBearer(const std::vector<Record*>& records)			//
 
 // найти имя у которого минимальное количество людей
 
+void FreeingUpMemory(std::vector<Record*>& records)
+{
+	for (size_t i = 1; i < records.size(); i++)
+	{
+		delete records.at(i);
+	}
+}
 
 int main()
 {
 	setlocale(LC_ALL, "Russian");
+	std::vector<Record*> records;
 	std::string filename = "russian_names_ANSI.csv";
-	std::vector<Record*> records = ReadFile(filename);
-
+	/*
+	records = ReadRusFile(filename);
+	
 	std::cout << "Total number of people in the database = " << NumbersOfPeople(records) << std::endl;
 	Record max_Record = MaxNumberName(records);					//> элемент вектора с наибольшим полем PeopleCount_
 
-	std::cout << "Elemint with maximal PepleCount = " << max_Record._peopleCount << " is " << max_Record._name << std::endl;
+	std::cout << "Element with maximal PepleCount = " << max_Record._peopleCount << " is " << max_Record._name << std::endl;
 	std::cout << "Total number of people int the database with zero name bearer -> " << NumberOfNamesWithZeroNameBearer(records) << std::endl;
 	DeleteNamesWithZeroNameBearers(records);
 	std::cout << "Total number of people int the database with zero name bearer -> " << NumberOfNamesWithZeroNameBearer(records) << std::endl;
@@ -245,6 +360,18 @@ int main()
 	Record min_Record = MinNumbersName(records);
 
 	std::cout << "Element with minimal PepleCount = " << min_Record._peopleCount << " is " << min_Record._name << std::endl;
+
+	FreeingUpMemory(records);
+
+	records.clear();
+	*/
+	filename = "foreign_names_ANSI.csv";
+
+	records = ReadForeignFile(filename);
+	
+
+
+
 	return 0;
 }
 
