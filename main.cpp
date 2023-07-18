@@ -12,6 +12,11 @@ struct Record
 	int _peopleCount = 0;
 };
 
+/*!
+\brief функция для чтения файла с иностранными именами
+\param[in] filename название файла
+\param[out] вектор указателей на объекты Record
+*/
 std::vector<Record*> ReadForeignFile(const std::string& filename)
 {
 	std::vector<Record*> records;
@@ -37,13 +42,20 @@ std::vector<Record*> ReadForeignFile(const std::string& filename)
 			if (isFirstLine)
 				while (fin.get(sym).get() != '\n');
 			isFirstLine = false;
-			if (sym == '"')
+			if (sym == '"')									//> условие для обработки записей, которые имеют кавычки
 			{
-				while (fin.get(sym).get() != '"');
+				char prevSym ='a';
+				while (fin.get(sym))
+				{
+					if (sym == ';' && prevSym == '"')
+						break;
+					prevSym = sym;
+				}
+				
 			}
-			if (count == 6 && sym != '\n')
+			if (count == 6 && sym != '\n')					//> считывание до конца строки
 				continue;
-			else if (count == 6 && sym == '\n')				//> переход на новую стрку в файле
+			else if (count == 6 && sym == '\n')				//> переход на новую строку в файле
 			{
 				count = 0;				
 				continue;
@@ -62,38 +74,31 @@ std::vector<Record*> ReadForeignFile(const std::string& filename)
 				else if(count == 6)
 				{
 					rec->_peopleCount = std::stoi(word);
-					std::cout << rec->_name << " " << rec->_sex << " " << rec->_peopleCount << std::endl;
+					//std::cout << rec->_name << " " << rec->_sex << " " << rec->_peopleCount << std::endl;
 					records.push_back(rec);
 					rec = new Record;
+				}
+				else if (count == 3)
+				{
+					word = "";
 				}
 				continue;
 
 			}
 			else if (count == 1)
 			{
-				if (sym != ';')
-				{
-					rec->_name += sym;
-					continue;
-				}
+				rec->_name += sym;
+				continue;
 			}
 			else if (count == 3)
 			{
-				if (sym != ';')
-				{
-					word += sym;
-					continue;
-				}
+				word += sym;
+				continue;
 			}
 			else if (count == 5)
 			{
-				if (sym != ';')
-				{
-					if (sym >= '0' && sym <= '9')
-						word += sym;
-
-					continue;
-				}
+				if (sym >= '0' && sym <= '9')
+					word += sym;
 
 				continue;
 			}
@@ -108,6 +113,11 @@ std::vector<Record*> ReadForeignFile(const std::string& filename)
 	return std::move(records);
 }
 
+/*!
+\brief функция для чтения файла с иностранными именами
+\param[in] filename название файла
+\param[out] вектор указателей на объекты Record
+*/
 std::vector<Record*> ReadRusFile(const std::string& filename)
 {
 	std::vector<Record*> records;
@@ -205,18 +215,14 @@ std::vector<Record*> ReadRusFile(const std::string& filename)
 			}
 			else if (count == 1)
 			{
-				if (sym != ';')
-				{
-					rec->_name += sym;
-					continue;
-				}
+				rec->_name += sym;
+				continue;
 			}
 			else if (count == 2)
 			{
-				if (sym != ';')
-				{
-					word += sym;
-				}
+				
+				word += sym;
+				
 				if (word == "Ж")
 					rec->_sex = 0;
 				else if (word == "М")
@@ -226,15 +232,8 @@ std::vector<Record*> ReadRusFile(const std::string& filename)
 			}
 			else if (count == 3)
 			{
-				if (sym != ';')
-				{
-					if (sym >= '0' && sym <= '9')
-						word += sym;
-
-					continue;
-				}
-
-				continue;
+				if (sym >= '0' && sym <= '9')
+					word += sym;
 			}
 
 		}
@@ -341,14 +340,10 @@ void FreeingUpMemory(std::vector<Record*>& records)
 	}
 }
 
-int main()
+void RecordsAnalize(std::vector<Record*>& records, std::string filename)
 {
-	setlocale(LC_ALL, "Russian");
-	std::vector<Record*> records;
-	std::string filename = "russian_names_ANSI.csv";
-	/*
-	records = ReadRusFile(filename);
 	
+
 	std::cout << "Total number of people in the database = " << NumbersOfPeople(records) << std::endl;
 	Record max_Record = MaxNumberName(records);					//> элемент вектора с наибольшим полем PeopleCount_
 
@@ -360,18 +355,29 @@ int main()
 	Record min_Record = MinNumbersName(records);
 
 	std::cout << "Element with minimal PepleCount = " << min_Record._peopleCount << " is " << min_Record._name << std::endl;
+}
+
+int main()
+{
+	setlocale(LC_ALL, "Russian");
+	std::vector<Record*> records;
+	std::string filename = "russian_names_ANSI.csv";
+	records = ReadRusFile(filename);
+	RecordsAnalize(records, filename);
 
 	FreeingUpMemory(records);
 
 	records.clear();
-	*/
+	
 	filename = "foreign_names_ANSI.csv";
 
 	records = ReadForeignFile(filename);
 	
+	RecordsAnalize(records, filename);
 
+	FreeingUpMemory(records);
 
-
+	records.clear();
 	return 0;
 }
 
